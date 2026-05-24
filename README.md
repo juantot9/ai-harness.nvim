@@ -2,14 +2,31 @@
 
 Open terminal-based AI coding agents inside Neovim and send editor context to them.
 
-This plugin intentionally starts as a small terminal wrapper. It works with tools like `pi`, `claude`, `codex`, `aider`, or any other command-line AI harness that can run in a terminal.
+`ai-harness.nvim` is a small Neovim wrapper around command-line AI tools such as `pi`, `claude`, `codex`, `aider`, or any other interactive command that can run in a terminal.
+
+It does not implement its own AI chat UI. Authentication, model selection, permissions, and tool execution are handled by the AI harness command you choose to run.
 
 ## Features
 
 - Open an AI harness in a vertical split, horizontal split, tab, or floating window.
-- Send the current file, visual selection/range, visible lines, open buffers, diagnostics, or git diffs.
-- Highlight AI conversation file references such as `src/main.lua:42:3`.
-- Jump from highlighted file references back into Neovim with `gf` or mouse click.
+- Send useful editor context to the harness:
+  - current file
+  - visual selection/range
+  - visible lines
+  - open buffers
+  - diagnostics
+  - git diffs
+- Highlight file references in AI output, such as `src/main.lua:42:3`.
+- Jump from AI output back into Neovim with `gf` or mouse click.
+
+## Requirements
+
+- Neovim 0.10 or newer recommended.
+- At least one terminal AI harness installed and available in `$PATH`, for example:
+  - `pi`
+  - `claude`
+  - `codex`
+  - `aider`
 
 ## Installation
 
@@ -17,7 +34,7 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-  "your-name/ai-harness.nvim",
+  "juantot9/ai-harness.nvim",
   config = function()
     require("ai-harness").setup({
       default_cmd = "pi",
@@ -30,16 +47,48 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-For local development:
+Use a different default harness if preferred:
 
 ```lua
-{
-  dir = "~/Escritorio/repos/ai-harness.nvim",
-  config = function()
-    require("ai-harness").setup()
-  end,
-}
+require("ai-harness").setup({
+  default_cmd = "claude",
+})
 ```
+
+## Quick start
+
+Open the default harness:
+
+```vim
+:AIHarnessOpen
+```
+
+Open a specific command:
+
+```vim
+:AIHarnessOpen claude
+:AIHarnessOpen aider
+```
+
+Send the current file:
+
+```vim
+:AIHarnessSendFile
+```
+
+Send a visual selection:
+
+```vim
+:'<,'>AIHarnessSendSelection
+```
+
+When the AI output contains a reference like this:
+
+```text
+lua/ai-harness/init.lua:10
+```
+
+Move the cursor over it and press `gf`, or click the highlighted reference.
 
 ## Commands
 
@@ -55,19 +104,6 @@ For local development:
 :AIHarnessSendGitDiffStaged
 :AIHarnessGotoReference [file[:line[:col]]]
 ```
-
-Examples:
-
-```vim
-:AIHarnessOpen pi
-:AIHarnessOpen claude
-:AIHarnessGotoReference lua/ai-harness/init.lua:10
-```
-
-Inside the AI terminal buffer:
-
-- `gf` runs `AIHarnessGotoReference` for the reference under the cursor.
-- Clicking a highlighted file reference opens that file location.
 
 ## Suggested keymaps
 
@@ -86,7 +122,7 @@ vim.keymap.set("n", "<leader>aG", ai.send_git_diff_staged, { desc = "Send staged
 
 ## Configuration
 
-Defaults:
+Default configuration:
 
 ```lua
 require("ai-harness").setup({
@@ -104,19 +140,46 @@ require("ai-harness").setup({
   keymaps = {
     terminal_goto_reference = "gf",
   },
+  highlight = {
+    enabled = true,
+    max_lines = 500,
+    debounce_ms = 150,
+  },
 })
 ```
 
-## Development
+Reference highlighting is limited to recent terminal lines by default for predictable performance. `gf` and click detection still parse the current line directly.
 
-Run tests with:
+To disable highlighting:
 
-```bash
-make test
+```lua
+require("ai-harness").setup({
+  highlight = {
+    enabled = false,
+  },
+})
 ```
 
-## Notes
+## Supported file references
 
-- The plugin does not implement a native AI chat UI yet. It wraps existing terminal harnesses.
-- Authentication, model selection, tools, and permissions are handled by the harness command you run.
-- File reference detection is intentionally simple in the first version and supports `file`, `file:line`, and `file:line:col`.
+The plugin recognizes simple file references in AI output:
+
+```text
+file
+file:line
+file:line:column
+src/main.lua:42
+/home/user/project/src/main.lua:42:3
+```
+
+Detection is intentionally simple and may highlight some false positives, such as URLs or version-like strings.
+
+## Development
+
+Clone the repository and run the tests:
+
+```bash
+git clone https://github.com/juantot9/ai-harness.nvim.git
+cd ai-harness.nvim
+make test
+```

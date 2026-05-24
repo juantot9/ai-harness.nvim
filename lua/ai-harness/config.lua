@@ -15,6 +15,11 @@ M.defaults = {
   keymaps = {
     terminal_goto_reference = "gf",
   },
+  highlight = {
+    enabled = true,
+    max_lines = 500,
+    debounce_ms = 150,
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)

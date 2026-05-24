@@ -1,3 +1,4 @@
+local config = require("ai-harness.config")
 local terminal = require("ai-harness.terminal")
 
 local M = {}
@@ -145,10 +146,20 @@ local function refresh_highlights(bufnr)
 
   vim.api.nvim_buf_clear_namespace(bufnr, namespace, 0, -1)
 
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  for row, line in ipairs(lines) do
+  local highlight = config.options.highlight or {}
+  if highlight.enabled == false then
+    return
+  end
+
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+  local max_lines = tonumber(highlight.max_lines) or 500
+  local start_line = math.max(0, line_count - max_lines)
+  local lines = vim.api.nvim_buf_get_lines(bufnr, start_line, line_count, false)
+
+  for index, line in ipairs(lines) do
+    local row = start_line + index - 1
     for _, ref in ipairs(references_in_line(line)) do
-      highlight_reference(bufnr, row - 1, ref)
+      highlight_reference(bufnr, row, ref)
     end
   end
 end
@@ -169,8 +180,10 @@ local function schedule_refresh(bufnr)
     refresh_timers[bufnr] = uv.new_timer()
   end
 
+  local debounce_ms = tonumber((config.options.highlight or {}).debounce_ms) or 150
+
   refresh_timers[bufnr]:stop()
-  refresh_timers[bufnr]:start(150, 0, function()
+  refresh_timers[bufnr]:start(debounce_ms, 0, function()
     vim.schedule(function()
       refresh_highlights(bufnr)
     end)
@@ -215,20 +228,24 @@ end
 -- Attachment ----------------------------------------------------------------
 
 function M.attach(bufnr)
-  vim.api.nvim_set_hl(0, "AIHarnessReference", { underline = true, default = true })
+  local highlight = config.options.highlight or {}
 
-  refresh_highlights(bufnr)
-  vim.api.nvim_buf_attach(bufnr, false, {
-    on_lines = function()
-      schedule_refresh(bufnr)
-    end,
-    on_reload = function()
-      schedule_refresh(bufnr)
-    end,
-    on_detach = function()
-      stop_refresh_timer(bufnr)
-    end,
-  })
+  if highlight.enabled ~= false then
+    vim.api.nvim_set_hl(0, "AIHarnessReference", { underline = true, default = true })
+
+    refresh_highlights(bufnr)
+    vim.api.nvim_buf_attach(bufnr, false, {
+      on_lines = function()
+        schedule_refresh(bufnr)
+      end,
+      on_reload = function()
+        schedule_refresh(bufnr)
+      end,
+      on_detach = function()
+        stop_refresh_timer(bufnr)
+      end,
+    })
+  end
 
   set_mouse_keymaps(bufnr)
 end
