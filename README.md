@@ -8,7 +8,7 @@ It does not implement its own AI chat UI. Authentication, model selection, permi
 
 ## Features
 
-- Open an AI harness in a vertical split, horizontal split, tab, or floating window.
+- Open an AI harness in a left/right/top/bottom split, tab, or floating window.
 - Send useful editor context to the harness:
   - current file
   - visual selection/range
@@ -39,8 +39,10 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
     require("ai-harness").setup({
       default_cmd = "pi",
       window = {
-        type = "vertical",
-        width = 0.35,
+        type = "split",
+        position = "right",
+        size = 0.35,
+        full_height = true,
       },
     })
   end,
@@ -128,9 +130,10 @@ Default configuration:
 require("ai-harness").setup({
   default_cmd = "pi",
   window = {
-    type = "vertical", -- "vertical", "horizontal", "float", or "tab"
-    width = 0.35,
-    height = 0.35,
+    type = "split", -- "split", "float", or "tab"
+    position = "right", -- "right", "left", "bottom", or "top"
+    size = 0.35,
+    full_height = true,
     float = {
       width = 0.8,
       height = 0.8,
@@ -144,6 +147,33 @@ require("ai-harness").setup({
     enabled = true,
     max_lines = 500,
     debounce_ms = 150,
+  },
+})
+```
+
+Window positions:
+
+```lua
+require("ai-harness").setup({
+  window = {
+    type = "split",
+    position = "left", -- "right", "left", "bottom", or "top"
+    size = 0.35,
+  },
+})
+```
+
+For floating windows:
+
+```lua
+require("ai-harness").setup({
+  window = {
+    type = "float",
+    float = {
+      width = 0.8,
+      height = 0.8,
+      border = "rounded",
+    },
   },
 })
 ```

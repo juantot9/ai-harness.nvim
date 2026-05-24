@@ -25,6 +25,66 @@ function M.is_running()
   return vim.fn.jobwait({ M.state.job_id }, 0)[1] == -1
 end
 
+local function resolve_size(size, total)
+  if type(size) == "number" and size > 0 and size < 1 then
+    return math.floor(total * size)
+  end
+  return size
+end
+
+local function open_float(window)
+  local float = window.float or {}
+  local width = resolve_size(float.width or 0.8, vim.o.columns)
+  local height = resolve_size(float.height or 0.8, vim.o.lines)
+
+  local row = math.floor((vim.o.lines - height) / 2)
+  local col = math.floor((vim.o.columns - width) / 2)
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  local winid = vim.api.nvim_open_win(bufnr, true, {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = "minimal",
+    border = float.border or "rounded",
+  })
+
+  return winid, bufnr
+end
+
+local function open_split(window)
+  local position = window.position or "right"
+  local size = window.size or 0.35
+
+  if position == "left" then
+    vim.cmd("topleft vertical split")
+  elseif position == "bottom" then
+    vim.cmd("botright split")
+  elseif position == "top" then
+    vim.cmd("topleft split")
+  else
+    vim.cmd("botright vertical split")
+  end
+
+  if position == "left" or position == "right" then
+    local width = resolve_size(size, vim.o.columns)
+    if type(width) == "number" and width >= 1 then
+      vim.cmd("vertical resize " .. width)
+    end
+    if window.full_height ~= false then
+      vim.cmd(position == "left" and "wincmd H" or "wincmd L")
+    end
+  else
+    local height = resolve_size(size, vim.o.lines)
+    if type(height) == "number" and height >= 1 then
+      vim.cmd("resize " .. height)
+    end
+  end
+
+  return vim.api.nvim_get_current_win()
+end
+
 local function open_window()
   local window = config.options.window
 
@@ -33,54 +93,11 @@ local function open_window()
     return vim.api.nvim_get_current_win()
   end
 
-  if window.type == "horizontal" then
-    vim.cmd("botright split")
-    local height = window.height
-    if type(height) == "number" and height > 0 and height < 1 then
-      height = math.floor(vim.o.lines * height)
-    end
-    if type(height) == "number" and height >= 1 then
-      vim.cmd("resize " .. height)
-    end
-    return vim.api.nvim_get_current_win()
-  end
-
   if window.type == "float" then
-    local float = window.float or {}
-    local width = float.width or 0.8
-    local height = float.height or 0.8
-
-    if width > 0 and width < 1 then
-      width = math.floor(vim.o.columns * width)
-    end
-    if height > 0 and height < 1 then
-      height = math.floor(vim.o.lines * height)
-    end
-
-    local row = math.floor((vim.o.lines - height) / 2)
-    local col = math.floor((vim.o.columns - width) / 2)
-    local bufnr = vim.api.nvim_create_buf(false, true)
-    local winid = vim.api.nvim_open_win(bufnr, true, {
-      relative = "editor",
-      width = width,
-      height = height,
-      row = row,
-      col = col,
-      style = "minimal",
-      border = float.border or "rounded",
-    })
-    return winid, bufnr
+    return open_float(window)
   end
 
-  vim.cmd("botright vsplit")
-  local width = window.width
-  if type(width) == "number" and width > 0 and width < 1 then
-    width = math.floor(vim.o.columns * width)
-  end
-  if type(width) == "number" and width >= 1 then
-    vim.cmd("vertical resize " .. width)
-  end
-  return vim.api.nvim_get_current_win()
+  return open_split(window)
 end
 
 local function apply_terminal_options(bufnr)
